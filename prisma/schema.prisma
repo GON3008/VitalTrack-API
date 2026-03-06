@@ -1,0 +1,152 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             Int            @id @default(autoincrement())
+  name           String
+  email          String         @unique
+  password       String
+  phone          String?
+  role           String         @default("user")
+  emailVerifiedAt DateTime?     @map("email_verified_at")
+  deletedAt      DateTime?      @map("deleted_at")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  healthProfile  HealthProfile?
+  medicalRecords MedicalRecord[]
+  notifications  Notification[]
+  aiAnalyses     AiAnalysis[]
+
+  @@map("users")
+}
+
+model HealthProfile {
+  id              Int      @id @default(autoincrement())
+  userId          Int      @unique @map("user_id")
+  dateOfBirth     DateTime? @map("date_of_birth")
+  gender          String?
+  height          Float?
+  weight          Float?
+  bloodType       String?  @map("blood_type")
+  chronicDiseases String?  @map("chronic_diseases")
+  allergies       String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("health_profiles")
+}
+
+model MedicalRecord {
+  id              Int               @id @default(autoincrement())
+  userId          Int               @map("user_id")
+  examinationDate DateTime          @map("examination_date")
+  hospitalName    String?           @map("hospital_name")
+  doctorName      String?           @map("doctor_name")
+  scanImagePath   String?           @map("scan_image_path")
+  status          String            @default("pending")
+  deletedAt       DateTime?         @map("deleted_at")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  user            User              @relation(fields: [userId], references: [id])
+  items           MedicalRecordItem[]
+  aiAnalysis      AiAnalysis?
+
+  @@map("medical_records")
+}
+
+model MedicalRecordItem {
+  id              Int           @id @default(autoincrement())
+  medicalRecordId Int           @map("medical_record_id")
+  indicatorName   String        @map("indicator_name")
+  indicatorCode   String?       @map("indicator_code")
+  value           Float
+  unit            String?
+  normalMin       Float?        @map("normal_min")
+  normalMax       Float?        @map("normal_max")
+  status          String        @default("normal")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  medicalRecord   MedicalRecord @relation(fields: [medicalRecordId], references: [id], onDelete: Cascade)
+
+  @@map("medical_record_items")
+}
+
+model AiAnalysis {
+  id                   Int         @id @default(autoincrement())
+  medicalRecordId      Int         @unique @map("medical_record_id")
+  userId               Int         @map("user_id")
+  summary              String?
+  healthScore          Float?      @map("health_score")
+  healthScoreLevel     String?     @map("health_score_level")
+  trendData            Json?       @map("trend_data")
+  comparedWithPrevious Json?       @map("compared_with_previous")
+  createdAt            DateTime    @default(now()) @map("created_at")
+  updatedAt            DateTime    @updatedAt @map("updated_at")
+
+  medicalRecord        MedicalRecord @relation(fields: [medicalRecordId], references: [id], onDelete: Cascade)
+  user                 User          @relation(fields: [userId], references: [id])
+  warnings             AiWarning[]
+  advices              AiAdvice[]
+
+  @@map("ai_analyses")
+}
+
+model AiWarning {
+  id            Int        @id @default(autoincrement())
+  aiAnalysisId  Int        @map("ai_analysis_id")
+  indicatorName String     @map("indicator_name")
+  level         String
+  message       String
+  isRead        Boolean    @default(false) @map("is_read")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  aiAnalysis    AiAnalysis @relation(fields: [aiAnalysisId], references: [id], onDelete: Cascade)
+
+  @@map("ai_warnings")
+}
+
+model AiAdvice {
+  id           Int        @id @default(autoincrement())
+  aiAnalysisId Int        @map("ai_analysis_id")
+  category     String
+  advice       String
+  priority     Int        @default(1)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  aiAnalysis   AiAnalysis @relation(fields: [aiAnalysisId], references: [id], onDelete: Cascade)
+
+  @@map("ai_advices")
+}
+
+model Notification {
+  id        Int       @id @default(autoincrement())
+  userId    Int       @map("user_id")
+  title     String
+  body      String
+  type      String    @default("info")
+  data      Json?
+  isRead    Boolean   @default(false) @map("is_read")
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
